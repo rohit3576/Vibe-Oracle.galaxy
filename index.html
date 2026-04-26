@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Vibe Oracle — A Cosmic Journey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Dancing+Script:wght@400;600;700&family=Cinzel:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   ROOT & RESET
+═══════════════════════════════════════════════ */
+:root {
+  --void:      #000005;
+  --deep:      #07001a;
+  --purple:    #1a0035;
+  --accent:    #9d4edd;
+  --glow:      #c77dff;
+  --pink:      #f0abfc;
+  --gold:      #c8a84b;
+  --gold-lt:   #e8d08a;
+  --white:     #ffffff;
+  --w90:       rgba(255,255,255,0.90);
+  --w70:       rgba(255,255,255,0.70);
+  --w40:       rgba(255,255,255,0.40);
+  --w12:       rgba(255,255,255,0.12);
+  --w06:       rgba(255,255,255,0.06);
+  --glass:     rgba(10,0,30,0.55);
+  --glass2:    rgba(20,0,50,0.45);
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { font-size: 16px; scroll-behavior: auto; }
+body {
+  background: var(--void);
+  color: var(--w90);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  overflow-x: hidden;
+  /* tall page = scroll distance = camera travel */
+  min-height: 800vh;
+}
+
+/* ═══════════════════════════════════════════════
+   CANVAS & OVERLAYS
+═══════════════════════════════════════════════ */
+#galaxy-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  display: block;
+}
+#depth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 120% 120% at 50% 50%,
+    transparent 20%,
+    rgba(0,0,10,0.25) 60%,
+    rgba(0,0,5,0.7) 100%
+  );
+}
+/* vignette */
+#vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: inset 0 0 180px rgba(0,0,0,0.85);
+}
+
+/* ═══════════════════════════════════════════════
+   SCROLL CONTAINER (all UI lives here)
+═══════════════════════════════════════════════ */
+#scroll-ui {
+  position: relative;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════
+   SECTION BASE
+═══════════════════════════════════════════════ */
+.zone {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  /* each zone stacks and fades */
+  opacity: 0;
+  transform: translateY(0);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.zone.visible { opacity: 1; }
+.zone.above   { opacity: 0; transform: translateY(-30px); }
+
+/* spacer between zones = amount of scroll travel per zone */
+.zone-spacer { height: 100vh; }
+
+/* ═══════════════════════════════════════════════
+   NAVBAR
+═══════════════════════════════════════════════ */
+#navbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 1.2rem 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: all;
+  transition: background 0.5s, backdrop-filter 0.5s;
+}
+#navbar.scrolled {
+  background: rgba(5,0,15,0.75);
+  backdrop-filter: blur(22px) saturate(1.4);
+  border-bottom: 1px solid var(--w12);
+}
+.nav-brand {
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--white);
+  text-shadow: 0 0 30px rgba(200,130,255,0.6);
+  text-decoration: none;
+}
+.nav-links {
+  display: flex; gap: 2.5rem; list-style: none;
+}
+.nav-links a {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: var(--w70);
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 0.3s, text-shadow 0.3s;
+  position: relative;
+}
+.nav-links a::after {
+  content: '';
+  position: absolute; bottom: -3px; left: 0;
+  width: 0; height: 1px;
+  background: var(--glow);
+  transition: width 0.3s;
+  box-shadow: 0 0 8px var(--glow);
+}
+.nav-links a:hover { color: var(--white); text-shadow: 0 0 20px rgba(200,130,255,0.8); }
+.nav-links a:hover::after { width: 100%; }
+
+/* mobile nav */
+.nav-burger { display: none; flex-direction: column; gap: 5px; cursor: pointer; pointer-events: all; }
+.nav-burger span { display: block; width: 22px; height: 1px; background: var(--w70); transition: 0.3s; }
+.nav-drawer {
+  display: none;
+  position: fixed; inset: 0; z-index: 99;
+  background: rgba(5,0,20,0.97);
+  backdrop-filter: blur(30px);
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 3rem;
+}
+.nav-drawer.open { display: flex; }
+.nav-drawer a {
+  font-family: 'Cinzel', serif; font-size: 1.1rem;
+  letter-spacing: 0.2em; color: var(--w70);
+  text-decoration: none; text-transform: uppercase;
+  transition: color 0.3s;
+}
+.nav-drawer a:hover { color: var(--white); }
+.drawer-close {
+  position: absolute; top: 1.5rem; right: 2rem;
+  font-size: 1.8rem; color: var(--w70); cursor: pointer;
+  pointer-events: all;
+}
+
+/* ═══════════════════════════════════════════════
+   DIVIDER ORNAMENT
+═══════════════════════════════════════════════ */
+.ornament {
+  display: flex; align-items: center; gap: 1rem;
+  color: var(--gold); font-size: 0.9rem; letter-spacing: 0.4em;
+  margin: 2rem 0;
+  opacity: 0.7;
+}
+.ornament::before, .ornament::after {
+  content: '';
+  flex: 1; max-width: 160px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+/* ═══════════════════════════════════════════════
+   GLASS CARD
+═══════════════════════════════════════════════ */
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--w12);
+  backdrop-filter: blur(24px) saturate(1.3);
+  border-radius: 1.5rem;
+  padding: 3rem 3.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.glass-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(157,78,221,0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════
+   HERO ZONE
+═══════════════════════════════════════════════ */
+#zone-hero {
+  flex-direction: column;
+  text-align: center;
+}
+.hero-eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.45em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: fadeSlideUp 1.4s 0.5s forwards;
+}
+.hero-title {
+  font-family: 'Dancing Script', cursive;
+  font-size: clamp(4.5rem, 14vw, 11rem);
+  font-weight: 700;
+  line-height: 0.95;
+  color: var(--white);
+  text-shadow:
+    0 0 80px rgba(200,130,255,0.55),
+    0 0 200px rgba(157,78,221,0.25);
+  opacity: 0;
+  animation: fadeSlideUp 1.4s 0.2s forwards;
+}
+.hero-sub {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: clamp(1rem, 2.5vw, 1.5rem);
+  color: var(--w70);
+  letter-spacing: 0.12em;
+  margin-top: 1.2rem;
+  opacity: 0;
+  animation: fadeSlideUp 1.4s 0.8s forwards;
+}
+.hero-buttons {
+  display: flex; gap: 1.5rem; margin-top: 3rem;
+  justify-content: center; flex-wrap: wrap;
+  opacity: 0;
+  animation: fadeSlideUp 1.2s 1.2s forwards;
+  pointer-events: all;
+}
+.btn-cosmic {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 1.05rem 2.4rem;
+  border-radius: 50px;
+  border: 1px solid var(--w40);
+  background: transparent;
+  color: var(--white);
+  cursor: pointer;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.4s, box-shadow 0.4s, transform 0.3s;
+  pointer-events: all;
+}
+.btn-cosmic::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at center, rgba(157,78,221,0.35) 0%, transparent 70%);
+  opacity: 0; transition: opacity 0.4s;
+}
+.btn-cosmic::after {
+  content: '';
+  position: absolute; inset: 0; border-radius: 50px;
+  box-shadow: inset 0 0 0 0 rgba(157,78,221,0.5);
+  transition: box-shadow 0.4s;
+}
+.btn-cosmic:hover {
+  border-color: var(--glow);
+  box-shadow: 0 0 35px rgba(157,78,221,0.5), 0 0 70px rgba(157,78,221,0.2);
+  transform: translateY(-2px);
+}
+.btn-cosmic:hover::before { opacity: 1; }
+
+/* scroll hint */
+.scroll-hint {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+  color: var(--w40);
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  opacity: 0;
+  animation: fadeSlideUp 1s 2s forwards;
+}
+.scroll-line {
+  width: 1px; height: 50px;
+  background: linear-gradient(to bottom, var(--w40), transparent);
+  animation: scrollPulse 2s ease-in-out infinite;
+}
+@keyframes scrollPulse {
+  0%,100% { transform: scaleY(1); opacity: 0.4; }
+  50%      { transform: scaleY(1.3); opacity: 0.9; }
+}
+
+/* ═══════════════════════════════════════════════
+   ABOUT ZONE
+═══════════════════════════════════════════════ */
+#zone-about .inner {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 4rem;
+  align-items: center;
+  max-width: 900px;
+  width: 90%;
+}
+.about-photo-wrap {
+  position: relative;
+  width: 260px; height: 310px;
+  margin: 0 auto;
+}
+.about-photo-wrap::before {
+  content: '';
+  position: absolute; inset: -3px;
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+  background: conic-gradient(from 0deg, var(--accent), var(--pink), var(--gold), var(--accent));
+  animation: spin 12s linear infinite;
+  opacity: 0.6;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.about-photo-wrap::after {
+  content: '';
+  position: absolute; inset: 3px;
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+  background: var(--deep);
+  z-index: 0;
+}
+.about-photo-wrap img {
+  position: relative; z-index: 1;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+}
+.zone-title {
+  font-family: 'Dancing Script', cursive;
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  color: var(--white);
+  margin-bottom: 1.5rem;
+  text-shadow: 0 0 40px rgba(200,130,255,0.4);
+}
+.body-text {
+  font-size: 1.05rem;
+  line-height: 1.95;
+  color: var(--w70);
+  font-weight: 300;
+  text-align: justify;
+  margin-bottom: 1.5rem;
+}
+.stat-list { list-style: none; }
+.stat-list li {
+  display: flex; align-items: center; gap: 0.8rem;
+  font-size: 0.95rem; color: var(--w70); margin-bottom: 0.6rem;
+}
+.stat-list li::before { content: '✦'; color: var(--gold); font-size: 0.65rem; }
+
+/* ═══════════════════════════════════════════════
+   SERVICES ZONE
+═══════════════════════════════════════════════ */
+#zone-services .inner {
+  max-width: 1100px;
+  width: 92%;
+}
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.8rem;
+  margin-top: 2rem;
+}
+.svc-card {
+  background: var(--glass2);
+  border: 1px solid var(--w12);
+  backdrop-filter: blur(20px);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  transition: transform 0.4s, box-shadow 0.4s, border-color 0.4s;
+  pointer-events: all;
+}
+.svc-card:hover {
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: 0 20px 60px rgba(157,78,221,0.25), 0 0 0 1px rgba(157,78,221,0.5);
+  border-color: rgba(157,78,221,0.6);
+}
+.svc-img-wrap { overflow: hidden; height: 200px; }
+.svc-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s;
+  display: block;
+  /* ovoid top */
+  border-radius: 50% 50% 0 0 / 35% 35% 0 0;
+}
+.svc-card:hover .svc-img { transform: scale(1.07); }
+.svc-body { padding: 1.5rem 1.8rem; }
+.svc-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.25rem; font-weight: 600;
+  color: var(--white); margin-bottom: 0.75rem;
+}
+.svc-desc {
+  font-size: 0.9rem; line-height: 1.85;
+  color: var(--w70); font-weight: 300;
+  text-align: justify;
+}
+.svc-desc em { font-style: italic; color: var(--pink); display: block; margin-top: 0.6rem; }
+
+/* ═══════════════════════════════════════════════
+   HOW IT WORKS
+═══════════════════════════════════════════════ */
+#zone-how .inner { max-width: 900px; width: 90%; text-align: center; }
+.how-title { text-align: right; }
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5rem;
+  margin-top: 3rem;
+}
+.step {
+  display: flex; flex-direction: column; align-items: center; gap: 1rem;
+  animation: floatStep 5s ease-in-out infinite;
+}
+.step:nth-child(2) { animation-delay: 1.6s; }
+.step:nth-child(3) { animation-delay: 3.2s; }
+@keyframes floatStep {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+.step-num {
+  font-family: 'Cinzel', serif; font-size: 1.05rem;
+  color: var(--w40); letter-spacing: 0.1em;
+}
+.step-label {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+  color: var(--pink);
+}
+
+/* ═══════════════════════════════════════════════
+   TESTIMONIALS
+═══════════════════════════════════════════════ */
+#zone-testimonials .inner { width: 100%; max-width: 1200px; }
+.testi-strip { overflow: hidden; margin-top: 2rem; }
+.testi-track {
+  display: flex; gap: 2rem;
+  width: max-content;
+  animation: scrollMarquee 36s linear infinite;
+}
+.testi-track:hover { animation-play-state: paused; }
+@keyframes scrollMarquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.testi-card {
+  background: var(--white);
+  color: #1a012b;
+  border-radius: 1.2rem;
+  padding: 2rem 2.2rem;
+  width: 400px; flex-shrink: 0;
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+.testi-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(157,78,221,0.25); }
+.testi-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+.testi-name { font-family: 'Cinzel', serif; font-size: 1rem; font-weight: 600; color: #1a012b; }
+.testi-stars { color: #d4af37; font-size: 0.95rem; letter-spacing: 2px; }
+.testi-text { font-size: 0.9rem; line-height: 1.85; color: #2d1a4d; text-align: justify; }
+
+/* ═══════════════════════════════════════════════
+   CRYSTALS
+═══════════════════════════════════════════════ */
+#zone-crystals .inner { max-width: 1100px; width: 92%; }
+.crystals-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.4rem;
+  margin-top: 2rem;
+}
+.crystal-card {
+  background: var(--white);
+  border-radius: 1.4rem;
+  overflow: hidden;
+  transition: transform 0.4s, box-shadow 0.4s;
+  pointer-events: all;
+  cursor: pointer;
+}
+.crystal-card:hover {
+  transform: scale(1.04) translateY(-4px);
+  box-shadow: 0 18px 55px rgba(157,78,221,0.35);
+}
+.crystal-img-wrap { overflow: hidden; height: 200px; }
+.crystal-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s;
+  display: block;
+}
+.crystal-card:hover .crystal-img { transform: scale(1.1); }
+.crystal-info { padding: 1rem 1.3rem 1.3rem; }
+.crystal-name { font-family: 'Cinzel', serif; font-size: 0.88rem; font-weight: 600; color: #1a012b; margin-bottom: 0.25rem; }
+.crystal-sub  { font-size: 0.78rem; color: #7c3aed; font-style: italic; }
+
+/* ═══════════════════════════════════════════════
+   CONTACT
+═══════════════════════════════════════════════ */
+#zone-contact .inner { max-width: 640px; width: 90%; }
+.contact-form-wrap {
+  background: var(--glass);
+  border: 1px solid var(--w12);
+  backdrop-filter: blur(28px);
+  border-radius: 2rem;
+  padding: 3rem 3.5rem;
+  pointer-events: all;
+}
+.form-row {
+  display: flex; align-items: baseline; gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.18);
+}
+.form-label {
+  font-family: 'Cinzel', serif; font-size: 0.8rem;
+  color: var(--w70); white-space: nowrap;
+  min-width: 140px; letter-spacing: 0.06em;
+}
+.form-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--white);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem; font-weight: 300;
+}
+.form-input::placeholder { color: rgba(255,255,255,0.22); }
+.form-submit {
+  width: 100%; margin-top: 2rem;
+}
+.contact-sub {
+  font-family: 'Dancing Script', cursive;
+  font-size: 1.5rem;
+  color: var(--w70);
+  margin: 2.5rem 0 1.5rem;
+  text-align: center;
+}
+.social-row { display: flex; gap: 1.8rem; justify-content: center; }
+.social-icon {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--w12);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--w70);
+  transition: border-color 0.3s, color 0.3s, box-shadow 0.3s, transform 0.3s;
+  text-decoration: none;
+  pointer-events: all;
+}
+.social-icon:hover {
+  border-color: var(--glow);
+  color: var(--white);
+  box-shadow: 0 0 24px rgba(157,78,221,0.45);
+  transform: translateY(-3px);
+}
+
+/* footer */
+.cosmic-footer {
+  position: relative; z-index: 10;
+  text-align: center;
+  padding: 4rem 2rem 3rem;
+  color: var(--w40);
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════════ */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════
+   PROGRESS BAR
+═══════════════════════════════════════════════ */
+#progress-bar {
+  position: fixed; top: 0; left: 0;
+  height: 2px; width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--glow), var(--pink));
+  z-index: 200;
+  box-shadow: 0 0 12px rgba(200,130,255,0.7);
+  transition: width 0.1s linear;
+}
+
+/* zone number indicator */
+#zone-indicator {
+  position: fixed; right: 2rem; top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  display: flex; flex-direction: column; align-items: center; gap: 0.8rem;
+}
+.zone-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--w40);
+  transition: background 0.3s, transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+  pointer-events: all;
+}
+.zone-dot.active {
+  background: var(--glow);
+  transform: scale(1.5);
+  box-shadow: 0 0 12px rgba(200,130,255,0.7);
+}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-burger { display: flex; }
+  #zone-about .inner { grid-template-columns: 1fr; gap: 2rem; }
+  .about-photo-wrap { width: 200px; height: 240px; }
+  .services-grid { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr; gap: 1.5rem; }
+  .how-title { text-align: center; }
+  .crystals-grid { grid-template-columns: repeat(2, 1fr); }
+  .testi-card { width: 300px; }
+  .glass-card, .contact-form-wrap { padding: 2rem 1.5rem; }
+  .form-label { min-width: 100px; font-size: 0.72rem; }
+  #zone-indicator { display: none; }
+}
+@media (max-width: 480px) {
+  .crystals-grid { grid-template-columns: 1fr; }
+  .hero-buttons { flex-direction: column; align-items: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- PROGRESS BAR -->
+<div id="progress-bar"></div>
+
+<!-- GALAXY CANVAS -->
+<canvas id="galaxy-canvas"></canvas>
+<div id="depth-overlay"></div>
+<div id="vignette"></div>
+
+<!-- NAVBAR -->
+<nav id="navbar">
+  <a class="nav-brand" href="#">Vibe Oracle</a>
+  <ul class="nav-links">
+    <li><a href="#" onclick="scrollToZone(1)">About</a></li>
+    <li><a href="#" onclick="scrollToZone(2)">Services</a></li>
+    <li><a href="#" onclick="scrollToZone(4)">Crystals</a></li>
+    <li><a href="#" onclick="scrollToZone(5)">Contact</a></li>
+  </ul>
+  <div class="nav-burger" onclick="openDrawer()">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+
+<!-- MOBILE DRAWER -->
+<nav class="nav-drawer" id="navDrawer">
+  <span class="drawer-close" onclick="closeDrawer()">✕</span>
+  <a href="#" onclick="scrollToZone(0);closeDrawer()">Home</a>
+  <a href="#" onclick="scrollToZone(1);closeDrawer()">About</a>
+  <a href="#" onclick="scrollToZone(2);closeDrawer()">Services</a>
+  <a href="#" onclick="scrollToZone(4);closeDrawer()">Crystals</a>
+  <a href="#" onclick="scrollToZone(5);closeDrawer()">Contact</a>
+</nav>
+
+<!-- ZONE DOTS -->
+<div id="zone-indicator">
+  <div class="zone-dot active" onclick="scrollToZone(0)"></div>
+  <div class="zone-dot" onclick="scrollToZone(1)"></div>
+  <div class="zone-dot" onclick="scrollToZone(2)"></div>
+  <div class="zone-dot" onclick="scrollToZone(3)"></div>
+  <div class="zone-dot" onclick="scrollToZone(4)"></div>
+  <div class="zone-dot" onclick="scrollToZone(5)"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SCROLL UI WRAPPER
+═══════════════════════════════════════════ -->
+<div id="scroll-ui">
+
+  <!-- ── HERO ───────────────────────────────── -->
+  <div class="zone visible" id="zone-hero">
+    <div style="text-align:center; padding: 0 2rem;">
+      <p class="hero-eyebrow">A Cosmic Spiritual Journey</p>
+      <h1 class="hero-title">Vibe Oracle</h1>
+      <p class="hero-sub">~ Tarot · Pendulum Dowsing · Crystal Healing ~</p>
+      <div class="hero-buttons">
+        <a href="#" class="btn-cosmic" onclick="scrollToZone(5)">Book Your Reading</a>
+        <a href="#" class="btn-cosmic" onclick="scrollToZone(2)">Explore Services</a>
+      </div>
+    </div>
+    <div class="scroll-hint">
+      <span>Scroll to journey</span>
+      <div class="scroll-line"></div>
+    </div>
+  </div>
+  <div class="zone-spacer"></div>
+
+  <!-- ── ABOUT ──────────────────────────────── -->
+  <div class="zone" id="zone-about">
+    <div class="inner">
+      <div class="about-photo-wrap">
+        <img src="profile.jpeg" alt="Beena Makvana">
+      </div>
+      <div class="glass-card">
+        <h2 class="zone-title">Meet your Guide</h2>
+        <p class="body-text">Hi, I'm Beena Makvana, a tarot reader and crystal healer. I guide you through life's uncertainties using intuitive tarot insights and the healing energy of crystals, helping you find clarity, peace, and alignment.</p>
+        <ul class="stat-list">
+          <li>200+ Readings completed</li>
+          <li>2 years of experience</li>
+          <li>Energy Healing Specialist</li>
+        </ul>
+        <div class="ornament"><span>⊹ ✦ ⊹</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="zone-spacer"></div>
+
+  <!-- ── SERVICES ───────────────────────────── -->
+  <div class="zone" id="zone-services">
+    <div class="inner">
+      <h2 class="zone-title">Services</h2>
+      <div class="ornament"><span>⊹ ✦ ⊹</span></div>
+      <div class="services-grid">
+        <div class="svc-card">
+          <div class="svc-img-wrap">
+            <img src="service- tarot.jpg" alt="Tarot" class="svc-img">
+          </div>
+          <div class="svc-body">
+            <h3 class="svc-name">Cards Reading</h3>
+            <p class="svc-desc">I guide you through life's uncertainties using intuitive tarot insights, helping you find clarity, peace, and alignment with your highest path.</p>
+          </div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-img-wrap">
+            <img src="service-pedulum dowsing.jpg" alt="Pendulum" class="svc-img">
+          </div>
+          <div class="svc-body">
+            <h3 class="svc-name">Pendulum Dowsing</h3>
+            <p class="svc-desc">Ask your questions and receive intuitive guidance through pendulum dowsing, including yes/no answers, timing insights, and zodiac energy connections.</p>
+          </div>
+        </div>
+        <div class="svc-card">
+          <div class="svc-img-wrap">
+            <img src="service- crystal.jpg" alt="Crystal Healing" class="svc-img">
+          </div>
+          <div class="svc-body">
+            <h3 class="svc-name">Crystal Healing</h3>
+            <p class="svc-desc">Experience the healing power of crystals as they balance your energy, release blockages, and bring peace into your life.<em>Each crystal chosen for your unique energy.</em></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="zone-spacer"></div>
+
+  <!-- ── HOW IT WORKS ───────────────────────── -->
+  <div class="zone" id="zone-how">
+    <div class="inner">
+      <h2 class="zone-title how-title">How it Works</h2>
+      <div class="ornament"><span>⊹ ✦ ⊹</span></div>
+      <div class="steps">
+        <div class="step">
+          <span class="step-num">[1]</span>
+          <span class="step-label">Book Session</span>
+        </div>
+        <div class="step">
+          <span class="step-num">[2]</span>
+          <span class="step-label">Share your Question</span>
+        </div>
+        <div class="step">
+          <span class="step-num">[3]</span>
+          <span class="step-label">Receive Guidance</span>
+        </div>
+      </div>
+      <div class="ornament" style="margin-top:3rem;"><span>⊹ ✦ ⊹</span></div>
+
+      <!-- Testimonials embedded here since we need a 2nd sub-scroll -->
+      <h2 class="zone-title" style="margin-top:1rem; text-align:left;">Testimonials</h2>
+      <div class="testi-strip">
+        <div class="testi-track">
+          <div class="testi-card"><div class="testi-head"><span class="testi-name">Drashti</span><span class="testi-stars">★★★★★</span></div><p class="testi-text">The bracelet that you gave me is really special. U gave it to help me with my studying and concentration, and I truly feel it's working! Whenever I wear it, I feel calmer and more focused. It reminds me to stay disciplined and positive. I'm really thankful to Beena aunty for such a useful bracelet!</p></div>
+          <div class="testi-card"><div class="testi-head"><span class="testi-name">Prisha</span><span class="testi-stars">★★★★★</span></div><p class="testi-text">Consulting Beena Masi was an experience that truly resonated with my current situation. The guidance provided clarity and insight, especially regarding my preparation. I highly recommend Tarot with Beena Masi for anyone seeking insightful and empowering guidance.</p></div>
+          <div class="testi-card"><div class="testi-head"><span class="testi-name">Anjali</span><span class="testi-stars">★★★★★</span></div><p class="testi-text">The crystal healing session with Beena was transformative. I felt a deep sense of calm and peace afterwards. Her intuition is extraordinary and she truly has a gift for energy healing. Highly recommend to anyone seeking peace and clarity!</p></div>
+          <div class="testi-card"><div class="testi-head"><span class="testi-name">Riya</span><span class="testi-stars">★★★★★</span></div><p class="testi-text">My pendulum dowsing session was eye-opening! Beena has a rare ability to connect with energies and provide clarity. The session helped me make an important decision I had been struggling with for months. Truly gifted!</p></div>
+          <!-- duplicate for seamless loop -->
+          <div class="testi-card"><div class="testi-head"><span class="testi-name">Drashti</span><span class="testi-stars">★★★★★</span></div><p class="testi-text">The bracelet that you gave me is really special. U gave it to help me with my studying and concentration, and I truly feel it's working! Whenever I wear it, I feel calmer and more focused. It reminds me to stay disciplined and positive. I'm really thankful to Beena aunty!</p></div>
+          <div class="testi-card"><div class="testi-head"><span class="testi-name">Prisha</span><span class="testi-stars">★★★★★</span></div><p class="testi-text">Consulting Beena Masi was an experience that truly resonated with my current situation. The guidance provided clarity and insight. I highly recommend Tarot with Beena Masi for anyone seeking insightful and empowering guidance.</p></div>
+          <div class="testi-card"><div class="testi-head"><span class="testi-name">Anjali</span><span class="testi-stars">★★★★★</span></div><p class="testi-text">The crystal healing session with Beena was transformative. I felt a deep sense of calm and peace afterwards. Her intuition is extraordinary and she truly has a gift for energy healing. Highly recommend!</p></div>
+          <div class="testi-card"><div class="testi-head"><span class="testi-name">Riya</span><span class="testi-stars">★★★★★</span></div><p class="testi-text">My pendulum dowsing session was eye-opening! Beena has a rare ability to connect with energies and provide clarity. The session helped me make an important decision I had been struggling with for months.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="zone-spacer"></div>
+
+  <!-- ── CRYSTALS ───────────────────────────── -->
+  <div class="zone" id="zone-crystals">
+    <div class="inner">
+      <h2 class="zone-title">Available Crystals</h2>
+      <div class="ornament"><span>⊹ ✦ ⊹</span></div>
+      <div class="crystals-grid">
+        <div class="crystal-card">
+          <div class="crystal-img-wrap"><img src="available crystal - bracelet.jpg" alt="Bracelet" class="crystal-img"></div>
+          <div class="crystal-info"><p class="crystal-name">Bracelet</p><p class="crystal-sub">Bought by 100+ clients</p></div>
+        </div>
+        <div class="crystal-card">
+          <div class="crystal-img-wrap"><img src="available crystal tumbell.jpg" alt="Tumbled Stone" class="crystal-img"></div>
+          <div class="crystal-info"><p class="crystal-name">Tumbled Stone</p><p class="crystal-sub">Bought by 50+ clients</p></div>
+        </div>
+        <div class="crystal-card">
+          <div class="crystal-img-wrap"><img src="available crystal- pyramid.jpg" alt="Pyramid" class="crystal-img"></div>
+          <div class="crystal-info"><p class="crystal-name">Pyramid</p><p class="crystal-sub">Bought by 50+ clients</p></div>
+        </div>
+        <div class="crystal-card">
+          <div class="crystal-img-wrap"><img src="available crystal tree.jpg" alt="Crystal Tree" class="crystal-img"></div>
+          <div class="crystal-info"><p class="crystal-name">Crystal Tree</p><p class="crystal-sub">Bought by 30+ clients</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="zone-spacer"></div>
+
+  <!-- ── CONTACT ────────────────────────────── -->
+  <div class="zone" id="zone-contact">
+    <div class="inner" style="text-align:center;">
+      <h2 class="zone-title">Ready to receive your Guidance?</h2>
+      <div class="contact-form-wrap" style="margin-top:2rem; text-align:left;">
+        <div class="form-row">
+          <label class="form-label">Name:</label>
+          <input type="text" class="form-input" placeholder="Your name">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Service Interested:</label>
+          <input type="text" class="form-input" placeholder="Tarot, Crystal Healing…">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Your Question:</label>
+          <input type="text" class="form-input" placeholder="What would you like guidance on?">
+        </div>
+        <a href="#" class="btn-cosmic form-submit" style="display:block; text-align:center; margin-top:2rem;">Send into the Cosmos ✦</a>
+      </div>
+      <p class="contact-sub">Fill out the form or contact us directly !!</p>
+      <div class="social-row">
+        <a href="tel:+91" class="social-icon" title="Call">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.5 10.82 19.79 19.79 0 01.43 2.18 2 2 0 012.41 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.18 6.18l1.27-.76a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+        </a>
+        <a href="https://instagram.com" target="_blank" class="social-icon" title="Instagram">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+        </a>
+        <a href="https://wa.me" target="_blank" class="social-icon" title="WhatsApp">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+        </a>
+      </div>
+      <div class="ornament" style="margin-top:2.5rem;"><span>⊹ ✦ ⊹</span></div>
+    </div>
+  </div>
+  <div class="zone-spacer"></div>
+
+</div><!-- /scroll-ui -->
+
+<footer class="cosmic-footer">
+  <p>© 2025 Vibe Oracle · Beena Makvana · All Rights Reserved</p>
+</footer>
+
+<!-- ═══════════════════════════════════════════════
+     THREE.JS + FULL GALAXY ENGINE
+═══════════════════════════════════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+/* ─── helpers ─── */
+const lerp = (a,b,t) => a+(b-a)*t;
+const rand = (a,b) => a + Math.random()*(b-a);
+const isMobile = window.innerWidth < 768;
+
+/* ─── renderer ─── */
+const canvas   = document.getElementById('galaxy-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:false, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000005, 1);
+
+/* ─── scene & fog ─── */
+const scene = new THREE.Scene();
+scene.fog   = new THREE.FogExp2(0x04001a, 0.00035);
+
+/* ─── camera ─── */
+const camera = new THREE.PerspectiveCamera(68, window.innerWidth/window.innerHeight, 0.5, 3500);
+camera.position.set(0, 0, 0);
+
+/* ═══════════════════════════════════════════
+   STAR LAYER FACTORY
+═══════════════════════════════════════════ */
+function makeLayer(opts) {
+  const { count, xSpread, ySpread, zMin, zMax, sizeMin, sizeMax, palette, opacityBase, drift } = opts;
+  const geo  = new THREE.BufferGeometry();
+  const pos  = new Float32Array(count * 3);
+  const col  = new Float32Array(count * 3);
+  const ph   = new Float32Array(count);   // twinkle phase
+  const sp   = new Float32Array(count);   // twinkle speed
+  const orig = new Float32Array(count * 3);
+
+  for (let i=0; i<count; i++) {
+    const x = rand(-xSpread, xSpread);
+    const y = rand(-ySpread, ySpread);
+    const z = rand(zMin, zMax);
+    pos[i*3]=x; pos[i*3+1]=y; pos[i*3+2]=z;
+    orig[i*3]=x; orig[i*3+1]=y; orig[i*3+2]=z;
+    const c = palette[Math.floor(Math.random()*palette.length)];
+    col[i*3]=c[0]; col[i*3+1]=c[1]; col[i*3+2]=c[2];
+    ph[i] = Math.random()*Math.PI*2;
+    sp[i] = rand(0.25, 1.1);
+  }
+
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(col,3));
+
+  const mat = new THREE.PointsMaterial({
+    size: rand(sizeMin, sizeMax),
+    sizeAttenuation: true,
+    vertexColors: true,
+    transparent: true,
+    opacity: opacityBase,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+
+  const pts = new THREE.Points(geo, mat);
+  pts.userData = { ph, sp, zMin, zMax, drift, opacityBase, orig };
+  return pts;
+}
+
+/* ─── palettes ─── */
+const WHITE  = [[1,1,1],[0.96,0.96,1],[0.92,0.9,1]];
+const VIOLET = [[0.78,0.5,1],[0.65,0.35,0.95],[0.55,0.25,0.85]];
+const PINK   = [[1,0.72,0.92],[0.9,0.6,0.88],[1,0.82,0.96]];
+const MIXED  = [...WHITE,...WHITE,...VIOLET,...PINK];
+const DUST   = [[0.4,0.15,0.65],[0.32,0.08,0.55],[0.48,0.2,0.7]];
+
+/* ─── layer counts ─── */
+const FAR_N  = isMobile ? 70  : 220;
+const MID_N  = isMobile ? 50  : 160;
+const NEAR_N = isMobile ? 25  : 80;
+const DUST_N = isMobile ? 40  : 140;
+
+const layerFar  = makeLayer({ count:FAR_N,  xSpread:1100, ySpread:800, zMin:-2000, zMax:-1200, sizeMin:0.6, sizeMax:1.2, palette:[...WHITE,...VIOLET], opacityBase:0.75, drift:0.5 });
+const layerMid  = makeLayer({ count:MID_N,  xSpread:900,  ySpread:680, zMin:-1200, zMax:-400,  sizeMin:1.0, sizeMax:1.8, palette:MIXED,               opacityBase:0.85, drift:1.4 });
+const layerNear = makeLayer({ count:NEAR_N, xSpread:600,  ySpread:480, zMin:-400,  zMax:-40,   sizeMin:1.6, sizeMax:2.8, palette:[...VIOLET,...PINK],  opacityBase:0.9,  drift:3.2 });
+const layerDust = makeLayer({ count:DUST_N, xSpread:1300, ySpread:1000,zMin:-1800, zMax:-300,  sizeMin:0.3, sizeMax:0.7, palette:DUST,                opacityBase:0.4,  drift:0.8 });
+
+scene.add(layerFar, layerMid, layerNear, layerDust);
+
+/* ═══════════════════════════════════════════
+   NEBULA RING (decorative volume cloud)
+═══════════════════════════════════════════ */
+function makeNebula() {
+  if (isMobile) return null;
+  const nc  = 1800;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(nc*3);
+  const col = new Float32Array(nc*3);
+  const pal = [[0.48,0.1,0.82],[0.35,0.05,0.72],[0.62,0.18,0.78],[0.8,0.35,0.75]];
+  for (let i=0;i<nc;i++) {
+    const th = Math.random()*Math.PI*2;
+    const r  = 180 + Math.random()*380;
+    const sp = 90;
+    pos[i*3]   = Math.cos(th)*r + rand(-sp,sp);
+    pos[i*3+1] = Math.sin(th)*r*0.38 + rand(-sp*0.4, sp*0.4);
+    pos[i*3+2] = rand(-1400,-500);
+    const c = pal[Math.floor(Math.random()*pal.length)];
+    const b = rand(0.25,0.7);
+    col[i*3]=c[0]*b; col[i*3+1]=c[1]*b; col[i*3+2]=c[2]*b;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(col,3));
+  const mat = new THREE.PointsMaterial({
+    size:4.5, sizeAttenuation:true, vertexColors:true,
+    transparent:true, opacity:0.38,
+    blending:THREE.AdditiveBlending, depthWrite:false
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.rotation.z = 0.22;
+  return pts;
+}
+const nebula = makeNebula();
+if (nebula) scene.add(nebula);
+
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+let mouse      = {x:0, y:0};
+let smoothMouse= {x:0, y:0};
+let camRot     = {x:0, y:0};
+
+// Scroll → camera Z travel
+const TOTAL_TRAVEL = 1800; // total Z units to travel through all content
+let scrollProgress = 0;    // 0 → 1
+let targetCamZ     = 0;
+let currentCamZ    = 0;
+let clockT         = 0;
+let prevTime       = performance.now();
+
+/* ─── scroll tracking ─── */
+function updateScroll() {
+  const docH  = document.documentElement.scrollHeight - window.innerHeight;
+  const sy    = window.scrollY;
+  scrollProgress = Math.min(sy / Math.max(docH, 1), 1);
+  targetCamZ  = -scrollProgress * TOTAL_TRAVEL;
+
+  // progress bar
+  document.getElementById('progress-bar').style.width = (scrollProgress*100).toFixed(1)+'%';
+
+  // navbar
+  document.getElementById('navbar').classList.toggle('scrolled', sy > 60);
+
+  // zone dots & zone visibility
+  updateZoneVisibility(scrollProgress);
+}
+window.addEventListener('scroll', updateScroll, {passive:true});
+
+/* ─── zones ─── */
+const ZONES = ['zone-hero','zone-about','zone-services','zone-how','zone-crystals','zone-contact'];
+const ZONE_THRESHOLDS = [0, 0.14, 0.28, 0.48, 0.64, 0.82]; // scroll% triggers
+
+function updateZoneVisibility(p) {
+  const dots = document.querySelectorAll('.zone-dot');
+  let activeIdx = 0;
+
+  ZONE_THRESHOLDS.forEach((thresh, i) => {
+    if (p >= thresh) activeIdx = i;
+  });
+
+  ZONES.forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (i === activeIdx) {
+      el.classList.add('visible');
+      el.classList.remove('above');
+    } else if (i < activeIdx) {
+      el.classList.remove('visible');
+      el.classList.add('above');
+    } else {
+      el.classList.remove('visible','above');
+    }
+  });
+
+  dots.forEach((d,i) => d.classList.toggle('active', i===activeIdx));
+}
+
+/* ─── mouse ─── */
+document.addEventListener('mousemove', e => {
+  mouse.x = (e.clientX/window.innerWidth  - 0.5)*2;
+  mouse.y = (e.clientY/window.innerHeight - 0.5)*2;
+});
+document.addEventListener('touchmove', e => {
+  mouse.x = (e.touches[0].clientX/window.innerWidth  - 0.5)*2;
+  mouse.y = (e.touches[0].clientY/window.innerHeight - 0.5)*2;
+},{passive:true});
+
+/* ═══════════════════════════════════════════
+   ANIMATION LOOP
+═══════════════════════════════════════════ */
+const allLayers = [layerFar, layerMid, layerNear, layerDust];
+
+function driftAndLoop(layer, cameraZDelta) {
+  const pos  = layer.geometry.attributes.position;
+  const ud   = layer.userData;
+  const {zMin, zMax, drift} = ud;
+  const span = zMax - zMin;
+
+  // drift speed differs per layer (near=fast, far=slow)
+  const speed = drift * 0.016;
+
+  for (let i=0; i<pos.count; i++) {
+    // push star toward camera based on drift constant
+    pos.array[i*3+2] += speed;
+    // loop: when star passes camera, reset to far end
+    if (pos.array[i*3+2] > 20) {
+      pos.array[i*3+2] -= span;
+    }
+  }
+  pos.needsUpdate = true;
+}
+
+function twinkle(layer, t) {
+  const col = layer.geometry.attributes.color;
+  const {ph, sp, opacityBase} = layer.userData;
+
+  // subtle opacity pulse via material opacity (per-layer not per-star for perf)
+  const flicker = opacityBase + Math.sin(t*0.7 + ph[0]) * 0.12;
+  layer.material.opacity = Math.max(0.1, Math.min(1, flicker));
+}
+
+function animate(now) {
+  requestAnimationFrame(animate);
+  const dt = Math.min((now - prevTime)/1000, 0.05);
+  prevTime = now;
+  clockT  += dt;
+
+  /* smooth mouse */
+  smoothMouse.x = lerp(smoothMouse.x, mouse.x, 0.038);
+  smoothMouse.y = lerp(smoothMouse.y, mouse.y, 0.038);
+
+  /* smooth camera Z (scroll travel) */
+  currentCamZ = lerp(currentCamZ, targetCamZ, 0.055);
+  camera.position.z = currentCamZ;
+
+  /* mouse → camera rotation (very subtle) */
+  camRot.y = lerp(camRot.y, smoothMouse.x * 0.022, 0.04);
+  camRot.x = lerp(camRot.x, smoothMouse.y * 0.012, 0.04);
+  camera.rotation.y = camRot.y;
+  camera.rotation.x = camRot.x;
+
+  /* parallax offsets — each layer shifts differently on mouse */
+  layerFar.position.x  = lerp(layerFar.position.x,  smoothMouse.x * 6,  0.03);
+  layerFar.position.y  = lerp(layerFar.position.y,  -smoothMouse.y * 4, 0.03);
+  layerMid.position.x  = lerp(layerMid.position.x,  smoothMouse.x * 15, 0.05);
+  layerMid.position.y  = lerp(layerMid.position.y,  -smoothMouse.y * 9, 0.05);
+  layerNear.position.x = lerp(layerNear.position.x, smoothMouse.x * 30, 0.08);
+  layerNear.position.y = lerp(layerNear.position.y, -smoothMouse.y*18,  0.08);
+  layerDust.position.x = lerp(layerDust.position.x, smoothMouse.x * 9,  0.04);
+  layerDust.position.y = lerp(layerDust.position.y, -smoothMouse.y * 5, 0.04);
+
+  /* scroll parallax: layers at different Z also shift different amounts along axis */
+  /* (camera moves, but we also push the layers differently for extra depth feel) */
+  const scrollDelta = (targetCamZ - camera.position.z);
+  layerFar.position.z  = lerp(layerFar.position.z,  camera.position.z * 0.05,  0.03);
+  layerMid.position.z  = lerp(layerMid.position.z,  camera.position.z * 0.15,  0.05);
+  layerNear.position.z = lerp(layerNear.position.z, camera.position.z * 0.35,  0.07);
+
+  /* continuous drift (stars move toward you) */
+  allLayers.forEach(l => driftAndLoop(l, scrollDelta));
+
+  /* twinkle */
+  allLayers.forEach(l => twinkle(l, clockT));
+
+  /* nebula slow rotation */
+  if (nebula) {
+    nebula.rotation.z += dt * 0.004;
+    nebula.position.x = smoothMouse.x * 20;
+    nebula.position.y = -smoothMouse.y * 12;
+  }
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+
+/* ─── resize ─── */
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+/* ═══════════════════════════════════════════
+   NAV HELPERS
+═══════════════════════════════════════════ */
+window.scrollToZone = function(idx) {
+  const docH = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = ZONE_THRESHOLDS[idx] + 0.01;
+  window.scrollTo({ top: docH * progress, behavior: 'smooth' });
+};
+window.openDrawer  = () => document.getElementById('navDrawer').classList.add('open');
+window.closeDrawer = () => document.getElementById('navDrawer').classList.remove('open');
+
+/* initial state */
+updateScroll();
+updateZoneVisibility(0);
+document.getElementById('zone-hero').classList.add('visible');
+</script>
+</body>
+</html>
