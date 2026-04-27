@@ -22,6 +22,25 @@
   const galaxyGroup = new THREE.Group();
   scene.add(galaxyGroup);
 
+  function createStarTexture() {
+    const starCanvas = document.createElement("canvas");
+    starCanvas.width = 64;
+    starCanvas.height = 64;
+    const context = starCanvas.getContext("2d");
+    const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gradient.addColorStop(0, "rgba(255,255,255,1)");
+    gradient.addColorStop(0.18, "rgba(255,224,255,0.94)");
+    gradient.addColorStop(0.45, "rgba(212,126,255,0.38)");
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 64, 64);
+    const texture = new THREE.CanvasTexture(starCanvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  const starTexture = createStarTexture();
+
   const layers = [
     { name: "far", count: Math.floor(starTotal * 0.46), zMin: -3000, zMax: -2000, size: 5.5, opacity: 0.42, speed: 0.18 },
     { name: "mid", count: Math.floor(starTotal * 0.34), zMin: -2000, zMax: -800, size: 8.5, opacity: 0.68, speed: 0.42 },
@@ -56,6 +75,7 @@
 
     const material = new THREE.PointsMaterial({
       size: layer.size,
+      map: starTexture,
       vertexColors: true,
       transparent: true,
       opacity: layer.opacity,
@@ -90,6 +110,7 @@
     nebulaGeometry,
     new THREE.PointsMaterial({
       size: isMobile ? 52 : 72,
+      map: starTexture,
       vertexColors: true,
       transparent: true,
       opacity: 0.16,
@@ -218,21 +239,93 @@
     });
   }
 
-  const menuButton = document.querySelector(".menu-toggle");
-  const nav = document.querySelector(".nav-links");
-  menuButton.addEventListener("click", () => {
-    const isOpen = nav.classList.toggle("is-open");
-    menuButton.setAttribute("aria-expanded", String(isOpen));
-  });
+  function initNavbar() {
+    const header = document.querySelector(".site-header");
+    const menuButton = document.querySelector(".menu-toggle");
+    const nav = document.querySelector(".nav-links");
+    const navLinks = Array.from(document.querySelectorAll(".nav-links a[href^='#']"));
+    const trackedSections = ["about", "services", "products", "contact"]
+      .map((id) => document.getElementById(id))
+      .filter(Boolean);
 
-  nav.addEventListener("click", (event) => {
-    if (event.target.closest("a")) {
-      nav.classList.remove("is-open");
-      menuButton.setAttribute("aria-expanded", "false");
+    if (!header || !menuButton || !nav) return;
+
+    function setMenu(open) {
+      nav.classList.toggle("is-open", open);
+      header.classList.toggle("menu-open", open);
+      menuButton.setAttribute("aria-expanded", String(open));
+      menuButton.setAttribute("aria-label", open ? "Close menu" : "Open menu");
     }
-  });
+
+    function setActive(hash) {
+      navLinks.forEach((link) => {
+        link.classList.toggle("is-active", link.getAttribute("href") === hash);
+      });
+    }
+
+    function headerOffset() {
+      return Math.ceil(header.getBoundingClientRect().height + 10);
+    }
+
+    function scrollToSection(target) {
+      const destination = Math.max(0, target.getBoundingClientRect().top + window.scrollY - headerOffset());
+
+      if (window.gsap) {
+        const tweenState = { y: window.scrollY };
+        gsap.killTweensOf(tweenState);
+        gsap.to(tweenState, {
+          y: destination,
+          duration: 0.9,
+          ease: "power2.out",
+          onUpdate: () => window.scrollTo(0, tweenState.y),
+          onComplete: () => {
+            window.scrollTo(0, destination);
+            if (window.ScrollTrigger) ScrollTrigger.update();
+          }
+        });
+      } else {
+        window.scrollTo({ top: destination, behavior: "smooth" });
+      }
+    }
+
+    menuButton.addEventListener("click", () => {
+      setMenu(!nav.classList.contains("is-open"));
+    });
+
+    navLinks.forEach((link) => {
+      link.addEventListener("click", (event) => {
+        const target = document.querySelector(link.getAttribute("href"));
+        if (!target) return;
+
+        event.preventDefault();
+        setMenu(false);
+        setActive(link.getAttribute("href"));
+        scrollToSection(target);
+      });
+    });
+
+    window.addEventListener("scroll", () => {
+      header.classList.toggle("is-scrolled", window.scrollY > 16);
+
+      let currentSection = trackedSections[0];
+      const activationLine = window.scrollY + headerOffset() + window.innerHeight * 0.22;
+      trackedSections.forEach((section) => {
+        if (section.offsetTop <= activationLine) currentSection = section;
+      });
+
+      if (currentSection) setActive(`#${currentSection.id}`);
+    }, { passive: true });
+
+    window.addEventListener("resize", () => {
+      if (window.matchMedia("(min-width: 761px)").matches) setMenu(false);
+    });
+    header.classList.toggle("is-scrolled", window.scrollY > 16);
+    const initialHash = trackedSections.find((section) => `#${section.id}` === window.location.hash);
+    if (initialHash) setActive(`#${initialHash.id}`);
+  }
 
   syncCamera();
   initGsap();
+  initNavbar();
   animate();
 })();
